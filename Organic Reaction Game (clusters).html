@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reaction Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3fa;--card:#ffffff;--ink:#23304a;--mute:#6b7894;--ok:#2f9e63;--bad:#d64550;--near:#d98e04;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a28;--card:#1f2739;--ink:#e6ebf7;--mute:#97a3bf}}
+:root[data-theme="dark"]{--bg:#141a28;--card:#1f2739;--ink:#e6ebf7;--mute:#97a3bf}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Patrick Hand","Segoe Print","Comic Sans MS",sans-serif;font-size:17px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--mute)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+h1{font-size:24px;margin:0;font-weight:400}
+.bar{flex:1;min-width:140px;height:14px;background:var(--card);border:2px solid var(--ink);border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .4s}
+button{font:inherit;color:inherit;cursor:pointer}
+.reset{border:2px solid var(--ink);background:var(--card);border-radius:8px;padding:2px 10px}
+.wrap{overflow:auto;height:calc(100vh - 64px);height:calc(100dvh - 64px)}
+.canvas{position:relative;width:2000px;height:1750px}
+svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.hub{position:absolute;left:1000px;top:875px;transform:translate(-50%,-50%);width:190px;height:190px;border-radius:50%;background:var(--ink);color:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-size:21px;line-height:1.2;z-index:2}
+.hub b{font-weight:400;font-size:40px}
+.cl{position:absolute;transform:translate(-50%,-50%);width:290px;background:var(--card);border:3px solid var(--c);border-radius:14px;z-index:3;overflow:hidden}
+.cl h2{margin:0;padding:6px 10px;font-weight:400;font-size:20px;background:var(--c);color:#14203a;display:flex;justify-content:space-between}
+.cl.done{box-shadow:0 0 0 4px var(--ok)}
+.cl small{display:block;padding:4px 10px 0;color:var(--mute);font-size:14px}
+.r{padding:7px 10px;border-top:1px dashed var(--mute)}
+.r:first-of-type{border-top:0}
+.r div{font-size:15px;line-height:1.25;margin-bottom:4px}
+.r form{display:flex;gap:4px}
+.r input{flex:1;min-width:0;font:inherit;font-size:15px;padding:3px 7px;border:2px solid var(--mute);border-radius:7px;background:var(--bg);color:var(--ink)}
+.r input:focus{outline:3px solid var(--c);outline-offset:1px}
+.r button{border:2px solid var(--mute);background:var(--card);border-radius:7px;padding:0 8px;font-size:15px}
+.r .msg{font-size:14px;min-height:0;margin:3px 0 0}
+.r.ok input{border-color:var(--ok)} .r.ok .msg{color:var(--ok)}
+.r.bad input{border-color:var(--bad);animation:sh .3s} .r.bad .msg{color:var(--bad)}
+.r.near input{border-color:var(--near)} .r.near .msg{color:var(--near)}
+.r.rev input{border-style:dashed} .r.rev .msg{color:var(--mute)}
+@keyframes sh{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.r.bad input{animation:none}.bar i{transition:none}}
+@media (max-width:820px){
+ .wrap{overflow:visible;height:auto}
+ .canvas{width:auto;height:auto;padding:12px;display:flex;flex-direction:column;gap:14px}
+ svg,.hub{display:none}
+ .cl{position:static;transform:none;width:100%}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>Reaction Map</h1>
+ <div class="bar" role="progressbar" aria-label="Progress"><i id="fill"></i></div>
+ <span id="score">0 / 38</span>
+ <button class="reset" id="reset">start over</button>
+</header>
+<div class="wrap" id="wrap"><div class="canvas" id="canvas"><svg id="lines"></svg>
+ <div class="hub"><b id="hubn">0</b>of 38 reactions</div></div></div>
+
+<script>
+const D=[
+["cracking","#ffb4a2",[["long alkane → shorter alkane + alkene",[["al2o3","alumina","aluminiumoxide","aluminumoxide"],["high","heat","temp"]],"Al₂O₃, high temperature"]]],
+["oxidation","#a9c7f5",[
+["alkene → diol",[["kmno4","permanganate"],["cold"],["dilute","dil"]],"cold dilute KMnO₄, acidified"],
+["alkene → carboxylic acid / ketone / CO₂ + H₂O",[["kmno4","permanganate"],["hot"],["conc"]],"hot conc KMnO₄, acidified"],
+["1° alcohol → aldehyde",[["k2cr2o7","kmno4","dichromate","permanganate"],["distil"]],"acidified K₂Cr₂O₇ or KMnO₄, heat, distil"],
+["1° alcohol → carboxylic acid",[["k2cr2o7","kmno4","dichromate","permanganate"],["reflux"]],"acidified K₂Cr₂O₇ or KMnO₄, heat under reflux"],
+["2° alcohol → ketone",[["k2cr2o7","kmno4","dichromate","permanganate"],["heat","reflux"]],"acidified K₂Cr₂O₇ or KMnO₄, heat"],
+["aldehyde → carboxylic acid",[["k2cr2o7","kmno4","dichromate","permanganate"],["reflux"]],"acidified K₂Cr₂O₇ or KMnO₄, heat under reflux"]]],
+["FRS",["#f7b6d8"][0],[["alkane → haloalkane",[["cl2","br2","chlorine","bromine","halogen"],["uv","light"]],"Cl₂ or Br₂, UV light"]]],
+["nucleophilic sub","#9fe0d6",[
+["alcohol → haloalkane",[["hcl","kcl","kbr","hbr","pcl3","pcl5","socl2"]],"HCl, or KCl/KBr + conc H₂SO₄/H₃PO₄; PCl₃ and heat; PCl₅; SOCl₂"],
+["haloalkane → alcohol",[["naoh","koh"],["aq","water"],["reflux","heat"]],"NaOH(aq), heat under reflux"],
+["haloalkane → nitrile",[["kcn","nacn","cyanide"],["ethanol","alc"],["reflux","heat"]],"KCN in ethanol, heat under reflux"],
+["haloalkane → amine",[["nh3","ammonia"],["pressure","sealed","tube"]],"NH₃ in ethanol, heat under pressure in a sealed tube"],
+["test for halogen: haloalkane → alcohol + silver halide",[["agno3","silvernitrate"],["ethanol"]],"AgNO₃(aq) in ethanol, warm gently"]]],
+["acid reactions","#c9b8f0",[
+["acid → salt + H₂",[["mg","na","magnesium","sodium","metal"]],"reactive metal (Mg or Na)"],
+["acid → carboxylate + H₂O",[["naoh","koh","alkali"]],"alkali (NaOH)"],
+["acid → salt + H₂O + CO₂",[["na2co3","carbonate","nahco3"]],"carbonate (Na₂CO₃)"]]],
+["electrophilic addition","#ffe27a",[
+["alkene → alkane",[["h2","hydrogen"],["ni","pt","nickel","platinum"]],"H₂(g), Pt/Ni catalyst, 150-200 °C (hydrogenation)"],
+["alkene → alcohol",[["steam","h2o"],["h3po4","phosphoric"]],"steam, conc H₃PO₄ catalyst, 300 °C and 60 atm"],
+["alkene → haloalkane",[["hx","hcl","hbr","hi","hydrogenhalide","hydrogenchloride","hydrogenbromide"]],"HX(g), room temp"],
+["alkene → dihaloalkane",[["br2","cl2","bromine","chlorine"]],"Br₂ or Cl₂, room temp"]]],
+["condensation","#ffc58a",[["carboxylic acid + alcohol → ester + H₂O",[["h2so4","sulfuric","sulphuric"],["reflux","heat"]],"conc H₂SO₄, heat under reflux"]]],
+["reduction","#f4a3a0",[
+["aldehyde → 1° alcohol",[["nabh4","lialh4","lithiumaluminium","sodiumborohydride"]],"NaBH₄(aq) or LiAlH₄ in dry ether"],
+["ketone → 2° alcohol",[["nabh4","lialh4","lithiumaluminium","sodiumborohydride"]],"NaBH₄(aq) or LiAlH₄ in dry ether"],
+["carboxylic acid → 1° alcohol",[["lialh4","lithiumaluminium"]],"LiAlH₄ in dry ether"],
+["nitrile → amine",[["na","sodium"],["ethanol"]],"Na + ethanol"],
+["alcohol → alkoxide + H₂ (the test for OH)",[["na","sodium"]],"Na(s), room temp"]]],
+["nucleophilic addition","#f2b8e6",[["aldehydes and ketones → hydroxynitriles",[["kcn","hcn","cyanide"],["h2so4","sulfuric","sulphuric","acid"]],"KCN + dilute H₂SO₄, heat gently"]]],
+["hydrolysis","#8fd1f2",[
+["ester → carboxylic acid + alcohol",[["acid","hcl","h2so4"],["reflux","heat"]],"dilute acid, heat under reflux"],
+["ester → carboxylate salt + alcohol",[["naoh","alkali"],["reflux","heat"]],"dilute NaOH, heat under reflux, then acidify for the acid"],
+["nitrile → carboxylic acid + ammonium salt",[["hcl","acid"],["reflux","heat"]],"dilute HCl, heat under reflux"],
+["nitrile → carboxylate + NH₃",[["naoh","alkali"],["reflux","heat"]],"dilute NaOH, heat under reflux, then acidify for the acid"]]],
+["addition polymerisation","#d8d8a0",[["alkene → polymer",[["pressure"],["temp","heat"]],"high temperature, high pressure, catalyst"]]],
+["combustion","#ffd1b0",[
+["alkane → CO₂ + H₂O",[["excess","plenty"],["o2","oxygen"]],"excess O₂ (complete)"],
+["alkane → CO or C + H₂O",[["limited","insufficient","restricted"],["o2","oxygen"]],"limited O₂ (incomplete)"],
+["alcohol → CO₂ + H₂O",[["o2","oxygen"],["ignite","burn","flame","light"]],"O₂, ignite"]]],
+["elimination","#b6e3a0",[
+["haloalkane → alkene",[["naoh","koh"],["ethanol","alc"],["reflux","heat"]],"NaOH in ethanol, heat under reflux"],
+["alcohol → alkene (dehydration)",[["h2so4","h3po4","al2o3","sulfuric","sulphuric","phosphoric","alumina"],["heat","conc","dehydrat"]],"conc H₂SO₄, conc H₃PO₄ or Al₂O₃, heat"],
+["hydroxynitrile → alkene",[["h2so4","sulfuric","sulphuric"],["heat","conc"]],"conc H₂SO₄, heat"]]]
+];
+const SUB="₀₁₂₃₄₅₆₇₈₉";
+const norm=s=>s.toLowerCase().replace(/[₀-₉]/g,c=>SUB.indexOf(c)).replace(/[^a-z0-9]/g,"");
+const cv=document.getElementById("canvas"),svg=document.getElementById("lines");
+const total=38,cx=1000,cy=875,rx=790,ry=640,done=new Set();
+let ns="http://www.w3.org/2000/svg",id=0;
+D.forEach((c,i)=>{
+ const a=-Math.PI/2+i*2*Math.PI/D.length,x=cx+rx*Math.cos(a),y=cy+ry*Math.sin(a);
+ const ln=document.createElementNS(ns,"line");
+ ln.setAttribute("x1",cx);ln.setAttribute("y1",cy);ln.setAttribute("x2",x);ln.setAttribute("y2",y);
+ ln.setAttribute("stroke",c[1]);ln.setAttribute("stroke-width",5);ln.setAttribute("stroke-linecap","round");svg.appendChild(ln);
+ const el=document.createElement("section");el.className="cl";el.style.cssText=`--c:${c[1]};left:${x}px;top:${y}px`;
+ el.innerHTML=`<h2><span>${c[0]}</span><span class="cnt">0/${c[2].length}</span></h2>`+c[2].map(r=>{
+  const k=id++;return `<div class="r" data-k="${k}"><div>${r[0]}</div><form autocomplete="off"><input aria-label="Reagents and conditions for ${r[0]}" placeholder="reagents and conditions"><button type="submit">check</button><button type="button" class="show" title="show answer">?</button></form><p class="msg"></p></div>`}).join("");
+ cv.appendChild(el);
+ c.el=el;
+});
+const flat=D.flatMap(c=>c[2].map(r=>({r,c})));
+function upd(){
+ document.getElementById("score").textContent=done.size+" / "+total;
+ document.getElementById("hubn").textContent=done.size;
+ document.getElementById("fill").style.width=done.size/total*100+"%";
+ D.forEach(c=>{const n=[...c.el.querySelectorAll(".r")].filter(e=>e.classList.contains("ok")).length;
+  c.el.querySelector(".cnt").textContent=n+"/"+c[2].length;c.el.classList.toggle("done",n===c[2].length)});
+}
+cv.addEventListener("submit",e=>{
+ e.preventDefault();
+ const row=e.target.closest(".r"),f=flat[row.dataset.k],inp=row.querySelector("input"),m=row.querySelector(".msg");
+ const t=norm(inp.value);if(!t)return;
+ const hit=f.r[1].filter(g=>g.some(w=>t.includes(w))).length;
+ row.classList.remove("ok","bad","near","rev");
+ if(hit===f.r[1].length){row.classList.add("ok");m.textContent="Yes! "+f.r[2];done.add(row.dataset.k);}
+ else if(hit>0){row.classList.add("near");m.textContent="Close, "+hit+" of "+f.r[1].length+" key parts are there. Keep going.";}
+ else{row.classList.add("bad");m.textContent="Not quite. Try again.";}
+ upd();
+});
+cv.addEventListener("click",e=>{
+ if(!e.target.classList.contains("show"))return;
+ const row=e.target.closest(".r"),f=flat[row.dataset.k];
+ row.classList.remove("bad","near");if(!row.classList.contains("ok")){row.classList.add("rev");row.querySelector(".msg").textContent="Answer: "+f.r[2];}
+});
+document.getElementById("reset").onclick=()=>{
+ done.clear();cv.querySelectorAll(".r").forEach(r=>{r.className="r";r.querySelector("input").value="";r.querySelector(".msg").textContent=""});upd();
+};
+const w=document.getElementById("wrap");w.scrollLeft=(2000-w.clientWidth)/2;w.scrollTop=0;
+upd();
+</script>
+</body>
+</html>
